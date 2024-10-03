@@ -1,3 +1,3 @@
-const backend_url = "http://localhost:5173/"
+const backend_url = "https://chat-with-vidf.vercel.app/"
 
 export {backend_url}

@@ -42,7 +42,7 @@ const ChatHeader = ({ theme }) => {
             <div
               className="dropdown-item logout"
               onClick={() =>
-                logout({ logoutParams: { returnTo: 'http://localhost:5173/' } })
+                logout({ logoutParams: { returnTo: 'https://chat-with-vidf.vercel.app/' } })
               }
             >
               <FaSignOutAlt /> Logout

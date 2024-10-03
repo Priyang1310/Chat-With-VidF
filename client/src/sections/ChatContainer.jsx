@@ -64,7 +64,7 @@ const ChatContainer = ({ user, logout }) => {
               </DropdownItem>
               <LogoutItem
                 onClick={() =>
-                  logout({ logoutParams: { returnTo: 'http://localhost:5173/landing' } })
+                  logout({ logoutParams: { returnTo: 'https://chat-with-vidf.vercel.app/landing' } })
                 }
               >
                 <FaSignOutAlt /> Logout
