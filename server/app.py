@@ -81,9 +81,10 @@ def convert_and_transcribe():
 @app.route('/ask', methods=['POST'])
 @app.route('/ask', methods=['POST'])
 def ask_pdf():
-    # Get the document ID and question from the request
+    # Get the document ID, question, and character from the request
     doc_id = request.form.get('doc_id')
     question = request.form.get('question')
+    character = request.form.get('character')
 
     if not doc_id or not question:
         return jsonify({"error": "No document ID or question provided"}), 400
@@ -94,8 +95,11 @@ def ask_pdf():
     if pdf_text is None:
         return jsonify({"error": "No transcript found for the provided document ID"}), 400
 
-    # Create a prompt based on the transcript text
-    jon_snow_prompt = f"Answer this question in the context of the following text, in the tone in which Tyrion Lannister would answer: {pdf_text}\nQuestion: {question}"
+    # Create the prompt based on whether the character is provided or not
+    if character:
+        jon_snow_prompt = f"Answer this question in the context of the following text, in the tone in which {character} would answer: {pdf_text}\nQuestion: {question}"
+    else:
+        jon_snow_prompt = f"Answer this question in the context of the following text: {pdf_text}\nQuestion: {question}"
 
     # Use the language model to answer the question
     answer = llm.invoke(jon_snow_prompt)  # Directly get the response as a string
@@ -105,7 +109,6 @@ def ask_pdf():
         answer = "I couldn't find an answer to your question."
 
     return jsonify({"answer": answer}), 200
-
 
 
 if __name__ == '__main__':
