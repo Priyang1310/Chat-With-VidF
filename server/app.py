@@ -3,6 +3,9 @@ import os
 import assemblyai as aai
 import pdfplumber
 from dotenv import load_dotenv
+import pandas as pd
+from langchain_google_genai import GoogleGenerativeAI
+from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 
 # Load environment variables
 load_dotenv()
@@ -15,6 +18,16 @@ aai.settings.api_key = os.getenv('ASSEMBLY_AI_KEY')
 
 # Initialize the Transcriber
 transcriber = aai.Transcriber()
+
+# Initialize the LLM (Google Gemini Pro)
+llm = GoogleGenerativeAI(
+    model="gemini-pro",
+    google_api_key=os.environ['GOOGLE_API_KEY_AI'],
+    max_tokens=512
+)
+
+# Global variable to store transcripts
+transcripts = {}
 
 # Function to extract text from PDF using pdfplumber
 def extract_text_from_pdf(file_path):
@@ -38,6 +51,9 @@ def convert_and_transcribe():
     if not file or not file_type:
         return jsonify({"error": "No file or file type provided"}), 400
 
+    # Generate a unique document ID (use file name without extension)
+    doc_id = os.path.splitext(file.filename)[0]
+
     # Save the uploaded file temporarily
     file_path = f"./temp/{file.filename}"
     file.save(file_path)
@@ -45,19 +61,55 @@ def convert_and_transcribe():
     if file_type == "pdf":
         # Extract text from the PDF using pdfplumber
         pdf_text = extract_text_from_pdf(file_path)
+        # Store the transcript in the global variable
+        transcripts[doc_id] = pdf_text
         # Clean up temporary file
         os.remove(file_path)
-        return jsonify({"transcript": pdf_text}), 200
+        return jsonify({"transcript": pdf_text, "doc_id": doc_id}), 200
     elif file_type == "video":
         # Transcribe the video directly using AssemblyAI
         transcript = transcribe_audio_or_video(file_path)
+        # Store the transcript in the global variable
+        transcripts[doc_id] = transcript
         # Clean up temporary file
         os.remove(file_path)
-        return jsonify({"transcript": transcript}), 200
+        return jsonify({"transcript": transcript, "doc_id": doc_id}), 200
     else:
         return jsonify({"error": "Unsupported file type. Use 'video' or 'pdf'."}), 400
+
+# Endpoint to ask questions based on stored transcripts
+@app.route('/ask', methods=['POST'])
+@app.route('/ask', methods=['POST'])
+def ask_pdf():
+    # Get the document ID and question from the request
+    doc_id = request.form.get('doc_id')
+    question = request.form.get('question')
+
+    if not doc_id or not question:
+        return jsonify({"error": "No document ID or question provided"}), 400
+
+    # Load the previously stored transcript using doc_id
+    pdf_text = transcripts.get(doc_id)
+
+    if pdf_text is None:
+        return jsonify({"error": "No transcript found for the provided document ID"}), 400
+
+    # Create a prompt based on the transcript text
+    jon_snow_prompt = f"Answer this question in the context of the following text, in the tone in which Tyrion Lannister would answer: {pdf_text}\nQuestion: {question}"
+
+    # Use the language model to answer the question
+    answer = llm.invoke(jon_snow_prompt)  # Directly get the response as a string
+
+    # Check if the answer is empty or not
+    if not answer:
+        answer = "I couldn't find an answer to your question."
+
+    return jsonify({"answer": answer}), 200
+
+
 
 if __name__ == '__main__':
     # Ensure the temp directory exists
     os.makedirs("./temp", exist_ok=True)
     app.run(host='0.0.0.0', port=5000, debug=True)
+    
